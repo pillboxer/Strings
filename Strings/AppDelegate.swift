@@ -7,21 +7,27 @@
 //
 
 import Cocoa
+import StringEditorFramework
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSApplicationDelegate {
-
+    
     @IBOutlet weak var window: NSWindow!
-
-
+    let controller = StringsListWindowController()
+    
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-        // Insert code here to initialize your application
+        #warning("Change Me")
+        BitbucketManager.shared.load { (error) in
+            DispatchQueue.main.async {
+                self.controller.showWindow(nil)
+            }
+        }
     }
-
+    
     func applicationWillTerminate(_ aNotification: Notification) {
         // Insert code here to tear down your application
     }
-
-
+    
+    
 }
 
