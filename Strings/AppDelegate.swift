@@ -17,7 +17,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         #warning("Change Me")
-        BitbucketManager.shared.load { (error) in
+        let manager = BitbucketManager.shared
+        manager.load { (error) in
             DispatchQueue.main.async {
                 self.controller.showWindow(nil)
             }
