@@ -11,18 +11,16 @@ import StringEditorFramework
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSApplicationDelegate {
-    
+        
     @IBOutlet weak var window: NSWindow!
-    let controller = StringsListWindowController()
+    let coordinator = Coordinator()
+
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-        #warning("Change Me")
-        let manager = BitbucketManager.shared
-        manager.load { (error) in
-            DispatchQueue.main.async {
-                self.controller.showWindow(nil)
-            }
-        }
+        window.orderOut(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        coordinator.start()
+        
     }
     
     func applicationWillTerminate(_ aNotification: Notification) {

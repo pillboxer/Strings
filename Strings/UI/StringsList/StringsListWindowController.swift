@@ -7,6 +7,7 @@
 //
 
 import Cocoa
+import UIHelper
 import StringEditorFramework
 
 
@@ -20,23 +21,22 @@ class StringsListWindowController: NSWindowController {
     }
     
     @IBAction func ctaButtonPressed(_ sender: Any) {
+        enableInterface(false)
+        // Manually disable so we can't spam
         ctaButton.isEnabled = false
-        textFieldsAreEnabled(false)
         manager.addToStrings(keysAndValues: newKeysAndValues) { [weak self] (error) in
             DispatchQueue.main.async {
                 self?.reset(error: error)
             }
-            
         }
     }
     
-    
     // MARK: - IBOutlets
-    @IBOutlet weak var tableView: NSTableView!
+    @IBOutlet weak var currentStringsTableView: NSTableView!
     @IBOutlet weak var newKeyTextField: NSTextField!
     @IBOutlet weak var newValueTextField: NSTextField!
     @IBOutlet weak var addButton: NSButton!
-    @IBOutlet weak var newStringsTableView: NSTableView!
+    @IBOutlet weak var newStringsTableView: UIHelperTableView!
     @IBOutlet weak var ctaButton: NSButton!
     @IBOutlet weak var loadingLabel: NSTextField!
     @IBOutlet weak var spinner: NSProgressIndicator!
@@ -48,7 +48,7 @@ class StringsListWindowController: NSWindowController {
     
     // MARK: - Exposed Properties
     override var windowNibName: NSNib.Name? {
-        return "StringsListWindowController"
+        return classNibName
     }
     
     // MARK: - Initialisation
@@ -63,10 +63,19 @@ class StringsListWindowController: NSWindowController {
     // MARK: - Life Cycle
     override func windowDidLoad() {
         super.windowDidLoad()
+        newStringsTableView.deleteDelegate = self
         currentKeysAndValues = manager.latestStrings?.displayTuples
-        tableView.reloadData()
-        configureButtonStates()
+        currentStringsTableView.reloadData()
         manager.delegate = self
+        configureUI()
+    }
+    
+    private func configureUI() {
+        if let title = manager.latestMessage {
+            window?.title = "Commit: \(title)"
+        }
+        configureButtonStates()
+        window?.center()
     }
     
     private func addToKeysAndValues(key: String, value: String) {
@@ -88,6 +97,7 @@ class StringsListWindowController: NSWindowController {
 extension StringsListWindowController {
     
     private func reset(error: StringEditError?) {
+        // The spinner should always hide
         spinner.isHidden = true
         
         if let error = error {
@@ -97,37 +107,36 @@ extension StringsListWindowController {
             loadingLabel.stringValue = "Upload successful"
             newKeysAndValues.removeAll()
             newStringsTableView.reloadData()
-            tableView.reloadData()
+            currentKeysAndValues = manager.latestStrings?.displayTuples
+            currentStringsTableView.reloadData()
         }
         resetTextFields()
     }
     
     private func resetTextFields() {
-        textFieldsAreEnabled(true)
         newValueTextField.stringValue = ""
         newKeyTextField.stringValue = ""
-        configureButtonStates()
+        enableInterface(true)
         newKeyTextField.becomeFirstResponder()
     }
     
-    private func textFieldsAreEnabled(_ enabled: Bool) {
+    private func enableInterface(_ enabled: Bool) {
         newKeyTextField.isEnabled = enabled
         newValueTextField.isEnabled = enabled
+        configureButtonStates()
     }
     
     private func configureButtonStates() {
         addButton.isEnabled = !newKeyTextField.stringValue.isEmpty && !newValueTextField.stringValue.isEmpty
         ctaButton.isEnabled = !newKeysAndValues.isEmpty
     }
-    
-    
 }
 
 // MARK: - Table View Data Source
 extension StringsListWindowController: NSTableViewDataSource {
     
     func numberOfRows(in tableView: NSTableView) -> Int {
-        if tableView == self.tableView {
+        if tableView == self.currentStringsTableView {
             return currentKeysAndValues?.count ?? 0
         }
         else if tableView == newStringsTableView {
@@ -139,7 +148,7 @@ extension StringsListWindowController: NSTableViewDataSource {
 }
 
 // MARK: - Table View Delegate
-extension StringsListWindowController: NSTableViewDelegate {
+extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDelegate {
     
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard let column = tableColumn, let keysAndValues = correctKeysAndValuesForTableVew(tableView) else {
@@ -172,12 +181,17 @@ extension StringsListWindowController: NSTableViewDelegate {
     }
     
     private func correctKeysAndValuesForTableVew(_ tableView: NSTableView) -> KeysAndValues? {
-        if tableView == self.tableView {
+        if tableView == self.currentStringsTableView {
             return currentKeysAndValues
         }
         else {
             return newKeysAndValues
         }
+    }
+    
+    func uiHelperTableViewShouldDeleteRow(tableView: UIHelperTableView, rowToDelete: Int) {
+        newKeysAndValues.remove(at: rowToDelete)
+        newStringsTableView.reloadData()
     }
 }
 
@@ -203,10 +217,16 @@ extension StringsListWindowController: BitbucketManagerDelegate {
         spinner.startAnimation(nil)
         
         switch state {
+        case .fetching:
+            loadingLabel.stringValue = "Fetching latest changes"
         case .pulling:
-            loadingLabel.stringValue = "Pulling latest changes"
+            loadingLabel.stringValue = "Pulling those changes"
         case .pushing:
             loadingLabel.stringValue = "Pushing your changes"
+        case .error(let error):
+            loadingLabel.stringValue = "Error received: \(error.localizedDescription)"
+        default:
+            return
         }
     }
 }
