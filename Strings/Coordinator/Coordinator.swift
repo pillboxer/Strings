@@ -9,10 +9,6 @@
 import Cocoa
 import StringEditorFramework
 
-protocol Coordinatable {
-    var coordinator: Coordinator { get set }
-}
-
 class Coordinator {
     
     // MARK: - Private Properties
@@ -25,14 +21,19 @@ class Coordinator {
     
     // MARK: - Exposed Methods
     func start() {
-        
-        self.currentController.showWindow(nil)
+        currentController.showWindow(nil)
+        loadFromBitbucket()
+    }
+    
+    // MARK: - Private Methods
+    private func loadFromBitbucket() {
         BitbucketManager.shared.load { (error) in
             if let error = error {
                 switch error {
                 case .noCredentials, .badCredentials:
                     self.controllerType = .login
                 default:
+                    self.showErrorAndQuit(error)
                     return
                 }
             }
@@ -45,7 +46,15 @@ class Coordinator {
         }
     }
     
-    // MARK: - Private Methods
+    private func showErrorAndQuit(_ error: RequestError) {
+        DispatchQueue.main.async {
+            NSAlert.showSimpleAlert(window: self.currentController.window, isError: true, title: "Something Went Wrong", message: error.localizedDescription) {
+                NSApp.terminate(nil)
+            }
+        }
+        
+    }
+    
     private func loadController() {
         currentController.close()
         guard let controllerType = controllerType else {
@@ -53,7 +62,9 @@ class Coordinator {
         }
         switch controllerType {
         case .login:
-            currentController = LoginWindowController()
+            let controller = LoginWindowController()
+            controller.delegate = self
+            currentController = controller
         case .strings:
             currentController = StringsListWindowController()
         }
@@ -61,4 +72,13 @@ class Coordinator {
         currentController.window?.center()
     }
     
+}
+
+extension Coordinator: LoginWindowControllerDelegate {
+    
+    func loginWindowControllerDidStoreCredentials(_ controller: LoginWindowController) {
+        currentController.close()
+        currentController = LaunchScreenWindowController()
+        start()
+    }
 }

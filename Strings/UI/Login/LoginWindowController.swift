@@ -10,6 +10,10 @@ import Cocoa
 import StringEditorFramework
 import UIHelper
 
+protocol LoginWindowControllerDelegate: class {
+    func loginWindowControllerDidStoreCredentials(_ controller: LoginWindowController)
+}
+
 class LoginWindowController: NSWindowController {
     
     // MARK: - IBOutlets
@@ -21,22 +25,19 @@ class LoginWindowController: NSWindowController {
     // MARK: - Action Methods
     @IBAction func ctaPressed(_ sender: Any) {
         disableInterfaceForLogin(true)
-        BitbucketManager.shared.checkCredentials(username: username, password: password) { (error) in
-            if let error = error {
-                DispatchQueue.main.async {
-                    self.showErrorAlert(error)
-                }
-            }
-            else {
-                print("SUCCESS")
-            }
+        guard BitbucketManager.shared.storeCredentials(username: username, password: password) else {
+            #warning("Handle")
+            return
         }
+        self.delegate?.loginWindowControllerDidStoreCredentials(self)
     }
     
     // MARK: - Exposed Properties
     override var windowNibName: NSNib.Name? {
         return classNibName
     }
+    
+    weak var delegate: LoginWindowControllerDelegate?
     
     // MARK: - Private Properties
     var username: String {

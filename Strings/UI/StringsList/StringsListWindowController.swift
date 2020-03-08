@@ -24,13 +24,35 @@ class StringsListWindowController: NSWindowController {
         enableInterface(false)
         // Manually disable so we can't spam
         ctaButton.isEnabled = false
-        manager.addToStrings(keysAndValues: newKeysAndValues) { [weak self] (error) in
+        manager.addToStrings(keysAndValues: newKeysAndValuesToAdd, editedStrings: editedStrings) { [weak self] (error) in
             DispatchQueue.main.async {
                 self?.reset(error: error)
             }
         }
     }
     
+    @IBAction func radioButtonSelected(_ sender: NSButton) {
+        guard sender != selectedButton else {
+            return
+        }
+        selectedButton = sender
+        let newPlatform: Platform = (sender == iosButton) ? .ios : .android
+        BitbucketManager.shared.changePlatformTo(newPlatform) { (error) in
+            DispatchQueue.main.async {
+                self.spinner.isHidden = true
+                if let error = error {
+                    NSAlert.showSimpleAlert(window: self.window, isError: true, title: "Error", message: error.localizedDescription, completion: nil)
+                }
+                else {
+                    self.reloadCurrentKeysAndValues(afterPushing: false)
+                }
+                
+            }
+        }
+        
+        currentStringsTableView.reloadData()
+        
+    }
     // MARK: - IBOutlets
     @IBOutlet weak var currentStringsTableView: NSTableView!
     @IBOutlet weak var newKeyTextField: NSTextField!
@@ -40,11 +62,28 @@ class StringsListWindowController: NSWindowController {
     @IBOutlet weak var ctaButton: NSButton!
     @IBOutlet weak var loadingLabel: NSTextField!
     @IBOutlet weak var spinner: NSProgressIndicator!
+    @IBOutlet weak var androidButton: NSButton!
+    @IBOutlet weak var iosButton: NSButton!
+    
     
     // MARK: - Private
-    private var currentKeysAndValues: KeysAndValues?
-    private var newKeysAndValues = KeysAndValues()
+    private var currentKeysAndValues: [KeyAndValue]?
+    private var newKeysAndValuesToAdd = [KeyAndValue]()
+    private var editedRowIndexes = Set<Int>()
     private let manager = BitbucketManager.shared
+    private var selectedButton: NSButton?
+    
+    private var editedStrings: [String: KeyAndValue] {
+        var dict = [String : KeyAndValue]()
+        for row in editedRowIndexes {
+            if let currentKey = currentKeyAndValueAtRow(row)?.key,
+                let editedKeyAndValue = editedKeyAndValueAtRow(row) {
+                dict[currentKey] = editedKeyAndValue
+            }
+        }
+        return dict
+    }
+    
     
     // MARK: - Exposed Properties
     override var windowNibName: NSNib.Name? {
@@ -69,6 +108,55 @@ class StringsListWindowController: NSWindowController {
         manager.delegate = self
         configureUI()
     }
+}
+
+// MARK: - Keys And Values
+extension StringsListWindowController {
+    
+    private func addToKeysAndValues(key: String, value: String) {
+        let keys = newKeysAndValuesToAdd.map() { $0.key }
+        if keys.contains(key) {
+            loadingLabel.isHidden = false
+            loadingLabel.stringValue = "\(key) already in table!"
+            return
+        }
+        let newTuple = (key: key, value: value)
+        newKeysAndValuesToAdd.insert(newTuple, at: 0)
+        resetTextFields()
+        newStringsTableView.reloadData()
+    }
+    
+    private func currentKeyAndValueAtRow(_ row: Int) -> KeyAndValue? {
+        guard let currentKeysAndValues = currentKeysAndValues else {
+            return nil
+        }
+        return currentKeysAndValues[row]
+    }
+    
+    private func editedKeyAndValueAtRow(_ row: Int) -> KeyAndValue? {
+        guard
+            let keyCell = currentStringsTableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? NSTableCellView,
+            let valueCell = currentStringsTableView.view(atColumn: 1, row: row, makeIfNecessary: false) as? NSTableCellView,
+            let newKey = keyCell.textField?.stringValue,
+            let newValue = valueCell.textField?.stringValue else {
+                return nil
+        }
+        return (newKey, newValue)
+        
+    }
+    
+    private func correctKeysAndValuesForTableVew(_ tableView: NSTableView) -> [KeyAndValue]? {
+        if tableView == self.currentStringsTableView {
+            return currentKeysAndValues
+        }
+        else {
+            return newKeysAndValuesToAdd
+        }
+    }
+}
+
+// MARK: - UI
+extension StringsListWindowController {
     
     private func configureUI() {
         if let title = manager.latestMessage {
@@ -76,41 +164,33 @@ class StringsListWindowController: NSWindowController {
         }
         configureButtonStates()
         window?.center()
+        let platform = UserDefaults.selectedPlatform
+        selectedButton = (platform == .ios) ? iosButton : androidButton
+        selectedButton?.state = .on
     }
-    
-    private func addToKeysAndValues(key: String, value: String) {
-        let keys = newKeysAndValues.map() { $0.key }
-        if keys.contains(key) {
-            loadingLabel.isHidden = false
-            loadingLabel.stringValue = "\(key) already in table!"
-            return
-        }
-        let newTuple = (key: key, value: value)
-        newKeysAndValues.insert(newTuple, at: 0)
-        resetTextFields()
-        newStringsTableView.reloadData()
-    }
-
-}
-
-// MARK: - UI
-extension StringsListWindowController {
     
     private func reset(error: StringEditError?) {
         // The spinner should always hide
         spinner.isHidden = true
         
         if let error = error {
-            loadingLabel.stringValue = error.localizedDescription
+            loadingLabel.isHidden = true
+            NSAlert.showSimpleAlert(window: window, title: "Error", message: error.localizedDescription, completion: nil)
         }
         else {
             loadingLabel.stringValue = "Upload successful"
-            newKeysAndValues.removeAll()
+            newKeysAndValuesToAdd.removeAll()
+            editedRowIndexes.removeAll()
             newStringsTableView.reloadData()
-            currentKeysAndValues = manager.latestStrings?.displayTuples
-            currentStringsTableView.reloadData()
+            reloadCurrentKeysAndValues(afterPushing: true)
         }
         resetTextFields()
+    }
+    
+    private func reloadCurrentKeysAndValues(afterPushing: Bool) {
+        currentKeysAndValues = manager.latestStrings?.displayTuples
+        currentStringsTableView.reloadData()
+        loadingLabel.isHidden = !afterPushing
     }
     
     private func resetTextFields() {
@@ -128,7 +208,7 @@ extension StringsListWindowController {
     
     private func configureButtonStates() {
         addButton.isEnabled = !newKeyTextField.stringValue.isEmpty && !newValueTextField.stringValue.isEmpty
-        ctaButton.isEnabled = !newKeysAndValues.isEmpty
+        ctaButton.isEnabled = !newKeysAndValuesToAdd.isEmpty || !editedStrings.isEmpty
     }
 }
 
@@ -140,11 +220,10 @@ extension StringsListWindowController: NSTableViewDataSource {
             return currentKeysAndValues?.count ?? 0
         }
         else if tableView == newStringsTableView {
-            return newKeysAndValues.count
+            return newKeysAndValuesToAdd.count
         }
         return 0
     }
-    
 }
 
 // MARK: - Table View Delegate
@@ -175,23 +254,17 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
         
         if let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(identifier), owner: nil) as? NSTableCellView {
             cell.textField?.stringValue = text
+            cell.textField?.target = self
+            cell.textField?.action = #selector(edit(_:))
             return cell
         }
         return nil
     }
     
-    private func correctKeysAndValuesForTableVew(_ tableView: NSTableView) -> KeysAndValues? {
-        if tableView == self.currentStringsTableView {
-            return currentKeysAndValues
-        }
-        else {
-            return newKeysAndValues
-        }
-    }
-    
     func uiHelperTableViewShouldDeleteRow(tableView: UIHelperTableView, rowToDelete: Int) {
-        newKeysAndValues.remove(at: rowToDelete)
+        newKeysAndValuesToAdd.remove(at: rowToDelete)
         newStringsTableView.reloadData()
+        configureButtonStates()
     }
 }
 
@@ -199,6 +272,30 @@ extension StringsListWindowController: NSTextFieldDelegate {
     
     func controlTextDidChange(_ obj: Notification) {
         loadingLabel.isHidden = true
+        configureButtonStates()
+    }
+    
+    @objc private func edit(_ sender: NSTextField) {
+        let rowToUpdate = currentStringsTableView.row(for: sender)
+        
+        guard rowToUpdate != 1, let currentKeyAndValue = currentKeyAndValueAtRow(rowToUpdate) else {
+            return
+        }
+        
+        let text = sender.stringValue.trimmingCharacters(in: .whitespaces)
+        let shouldRefill = text.isEmpty
+        
+        if shouldRefill {
+            if sender.isKeyTextField {
+                sender.stringValue = currentKeyAndValue.key
+            }
+            else {
+                sender.stringValue = currentKeyAndValue.value
+            }
+            return
+        }
+        
+        editedRowIndexes.insert(rowToUpdate)
         configureButtonStates()
     }
 }
@@ -218,9 +315,9 @@ extension StringsListWindowController: BitbucketManagerDelegate {
         
         switch state {
         case .fetching:
-            loadingLabel.stringValue = "Fetching latest changes"
+            loadingLabel.stringValue = "Fetching latest commit"
         case .pulling:
-            loadingLabel.stringValue = "Pulling those changes"
+            loadingLabel.stringValue = "Pulling latest commit"
         case .pushing:
             loadingLabel.stringValue = "Pushing your changes"
         case .error(let error):

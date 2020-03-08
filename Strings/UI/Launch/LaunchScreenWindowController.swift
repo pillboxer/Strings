@@ -60,20 +60,21 @@ extension LaunchScreenWindowController: BitbucketManagerDelegate {
                 self.loadingStatusLabel.stringValue = "Finishing..."
                 self.progressBar.animate(toDoubleValue: 100)
             case .error(let error):
-                self.handleLoadError(error)
+                self.handleError(error)
             default:
                 return
             }
         }
     }
     
-    private func handleLoadError(_ error: LoadError) {
+    private func handleError(_ error: RequestError) {
         switch error {
-        case .requestError(let error):
+        case .badCredentials:
+            self.loadingStatusLabel.stringValue = "Incorrect Credentials, please try again"
+            self.loadingStatusLabel.textColor = .red
+        default:
             self.progressBar.isHidden = true
             self.loadingStatusLabel.stringValue = "Request Error: \(error.localizedDescription)"
-        default:
-            return
         }
     }
     
