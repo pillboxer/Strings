@@ -14,7 +14,7 @@
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <window title="Window" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="F0z-JX-Cv5">
+        <window title="Strings" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="F0z-JX-Cv5">
             <windowStyleMask key="styleMask" titled="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="196" y="240" width="405" height="124"/>
@@ -23,16 +23,8 @@
                 <rect key="frame" x="0.0" y="0.0" width="405" height="124"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="EK6-hS-0AS">
-                        <rect key="frame" x="43" y="69" width="319" height="35"/>
-                        <textFieldCell key="cell" lineBreakMode="clipping" title="Touchnote Strings Editor" id="noz-be-vkt">
-                            <font key="font" metaFont="system" size="30"/>
-                            <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
-                            <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
-                        </textFieldCell>
-                    </textField>
                     <progressIndicator hidden="YES" wantsLayer="YES" maxValue="100" controlSize="small" style="bar" translatesAutoresizingMaskIntoConstraints="NO" id="PqA-TA-S1T">
-                        <rect key="frame" x="45" y="49" width="315" height="12"/>
+                        <rect key="frame" x="45" y="51" width="315" height="12"/>
                     </progressIndicator>
                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="kkh-z4-chk">
                         <rect key="frame" x="171" y="20" width="64" height="16"/>
@@ -42,18 +34,29 @@
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
+                    <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="ND9-6u-RmY">
+                        <rect key="frame" x="180" y="71" width="45" height="45"/>
+                        <constraints>
+                            <constraint firstAttribute="height" constant="45" id="aKw-67-Hfd"/>
+                            <constraint firstAttribute="width" constant="45" id="ztB-w7-x1w"/>
+                        </constraints>
+                        <imageCell key="cell" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" image="strings" id="f7q-rD-LUV"/>
+                    </imageView>
                 </subviews>
                 <constraints>
-                    <constraint firstItem="PqA-TA-S1T" firstAttribute="top" secondItem="EK6-hS-0AS" secondAttribute="bottom" constant="8" id="73f-u5-02W"/>
-                    <constraint firstItem="EK6-hS-0AS" firstAttribute="centerX" secondItem="se5-gp-TjO" secondAttribute="centerX" id="EfH-ij-gVU"/>
-                    <constraint firstItem="EK6-hS-0AS" firstAttribute="top" secondItem="se5-gp-TjO" secondAttribute="top" constant="20" id="GRO-Eo-pAd"/>
+                    <constraint firstItem="ND9-6u-RmY" firstAttribute="top" secondItem="se5-gp-TjO" secondAttribute="top" constant="8" id="7qa-Tn-iEz"/>
+                    <constraint firstItem="PqA-TA-S1T" firstAttribute="top" secondItem="ND9-6u-RmY" secondAttribute="bottom" constant="8" id="9Ku-sx-Rq7"/>
+                    <constraint firstItem="PqA-TA-S1T" firstAttribute="width" secondItem="se5-gp-TjO" secondAttribute="width" multiplier="0.777778" id="ASA-KV-1S2"/>
                     <constraint firstItem="PqA-TA-S1T" firstAttribute="centerX" secondItem="se5-gp-TjO" secondAttribute="centerX" id="OwO-C8-8D5"/>
+                    <constraint firstItem="ND9-6u-RmY" firstAttribute="centerX" secondItem="se5-gp-TjO" secondAttribute="centerX" id="Qcl-dt-sYq"/>
                     <constraint firstItem="kkh-z4-chk" firstAttribute="centerX" secondItem="se5-gp-TjO" secondAttribute="centerX" id="YIU-rt-g1i"/>
-                    <constraint firstItem="PqA-TA-S1T" firstAttribute="width" secondItem="EK6-hS-0AS" secondAttribute="width" id="oaS-JM-bAW"/>
                     <constraint firstAttribute="bottom" secondItem="kkh-z4-chk" secondAttribute="bottom" constant="20" id="uEe-8T-4Qa"/>
                 </constraints>
             </view>
             <point key="canvasLocation" x="113.5" y="-113"/>
         </window>
     </objects>
+    <resources>
+        <image name="strings" width="1801" height="823"/>
+    </resources>
 </document>

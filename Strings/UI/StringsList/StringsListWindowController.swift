@@ -24,7 +24,7 @@ class StringsListWindowController: NSWindowController {
         enableInterface(false)
         // Manually disable so we can't spam
         ctaButton.isEnabled = false
-        manager.addToStrings(keysAndValues: newKeysAndValuesToAdd, editedStrings: editedStrings) { [weak self] (error) in
+        manager.addToStrings(keysAndValues: newKeysAndValuesToAdd, editedStrings: editedStrings, commitMessage: commitMessage) { [weak self] (error) in
             DispatchQueue.main.async {
                 self?.reset(error: error)
             }
@@ -35,28 +35,28 @@ class StringsListWindowController: NSWindowController {
         guard sender != selectedButton else {
             return
         }
-        selectedButton = sender
         let newPlatform: Platform = (sender == iosButton) ? .ios : .android
+        let oldPlatformButton = (sender == iosButton) ? androidButton : iosButton
         BitbucketManager.shared.changePlatformTo(newPlatform) { (error) in
             DispatchQueue.main.async {
                 self.spinner.isHidden = true
                 if let error = error {
-                    NSAlert.showSimpleAlert(window: self.window, isError: true, title: "Error", message: error.localizedDescription, completion: nil)
+                    self.showSwitchingError(error)
+                    oldPlatformButton?.state = .on
                 }
                 else {
+                    self.selectedButton = sender
                     self.reloadCurrentKeysAndValues(afterPushing: false)
                 }
-                
             }
         }
-        
         currentStringsTableView.reloadData()
-        
     }
     // MARK: - IBOutlets
     @IBOutlet weak var currentStringsTableView: NSTableView!
     @IBOutlet weak var newKeyTextField: NSTextField!
     @IBOutlet weak var newValueTextField: NSTextField!
+    @IBOutlet weak var commitMessageTextField: NSTextField!
     @IBOutlet weak var addButton: NSButton!
     @IBOutlet weak var newStringsTableView: UIHelperTableView!
     @IBOutlet weak var ctaButton: NSButton!
@@ -153,15 +153,18 @@ extension StringsListWindowController {
             return newKeysAndValuesToAdd
         }
     }
+    
+    private var commitMessage: String {
+        return commitMessageTextField.stringValue
+    }
 }
 
 // MARK: - UI
 extension StringsListWindowController {
     
     private func configureUI() {
-        if let title = manager.latestMessage {
-            window?.title = "Commit: \(title)"
-        }
+        setTitle()
+        resetTextFields()
         configureButtonStates()
         window?.center()
         let platform = UserDefaults.selectedPlatform
@@ -187,10 +190,20 @@ extension StringsListWindowController {
         resetTextFields()
     }
     
+    private func setTitle() {
+        if let title = manager.latestMessage {
+            window?.title = "Commit: \(title)"
+        }
+    }
+    
     private func reloadCurrentKeysAndValues(afterPushing: Bool) {
+        
+        commitMessageTextField.stringValue = ""
+
         currentKeysAndValues = manager.latestStrings?.displayTuples
         currentStringsTableView.reloadData()
         loadingLabel.isHidden = !afterPushing
+        configureButtonStates()
     }
     
     private func resetTextFields() {
@@ -209,6 +222,12 @@ extension StringsListWindowController {
     private func configureButtonStates() {
         addButton.isEnabled = !newKeyTextField.stringValue.isEmpty && !newValueTextField.stringValue.isEmpty
         ctaButton.isEnabled = !newKeysAndValuesToAdd.isEmpty || !editedStrings.isEmpty
+    }
+    
+    private func showSwitchingError(_ error: RequestError) {
+        NSAlert.showSimpleAlert(window: self.window, isError: true, title: "Error", message: error.localizedDescription) {
+            self.loadingLabel.isHidden = true
+        }
     }
 }
 
@@ -256,6 +275,7 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
             cell.textField?.stringValue = text
             cell.textField?.target = self
             cell.textField?.action = #selector(edit(_:))
+            cell.textField?.delegate = self
             return cell
         }
         return nil
@@ -276,22 +296,26 @@ extension StringsListWindowController: NSTextFieldDelegate {
     }
     
     @objc private func edit(_ sender: NSTextField) {
+        let text = sender.stringValue.trimmingCharacters(in: .whitespaces)
         let rowToUpdate = currentStringsTableView.row(for: sender)
-        
-        guard rowToUpdate != 1, let currentKeyAndValue = currentKeyAndValueAtRow(rowToUpdate) else {
+        print(rowToUpdate)
+        guard rowToUpdate != -1, let currentKeyAndValue = currentKeyAndValueAtRow(rowToUpdate) else {
             return
         }
         
-        let text = sender.stringValue.trimmingCharacters(in: .whitespaces)
-        let shouldRefill = text.isEmpty
+        // Is the string the same?
+        let currentString = sender.isKeyTextField ? currentKeyAndValue.key : currentKeyAndValue.value
+        if text == currentString {
+            let removed = editedRowIndexes.remove(rowToUpdate)
+            print(removed)
+            configureButtonStates()
+            return
+        }
         
+        // Has the string been left empty?
+        let shouldRefill = text.isEmpty
         if shouldRefill {
-            if sender.isKeyTextField {
-                sender.stringValue = currentKeyAndValue.key
-            }
-            else {
-                sender.stringValue = currentKeyAndValue.value
-            }
+            sender.stringValue = currentString
             return
         }
         
