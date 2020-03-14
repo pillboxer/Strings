@@ -46,12 +46,15 @@ class StringsListWindowController: NSWindowController {
                 }
                 else {
                     self.selectedButton = sender
+                    self.configurePopUpButtonConstraintsForPlatform(newPlatform)
                     self.reloadCurrentKeysAndValues(afterPushing: false)
+                    self.setTitle(string: self.manager.latestMessage)
                 }
             }
         }
         currentStringsTableView.reloadData()
     }
+        
     // MARK: - IBOutlets
     @IBOutlet weak var currentStringsTableView: NSTableView!
     @IBOutlet weak var newKeyTextField: NSTextField!
@@ -64,7 +67,9 @@ class StringsListWindowController: NSWindowController {
     @IBOutlet weak var spinner: NSProgressIndicator!
     @IBOutlet weak var androidButton: NSButton!
     @IBOutlet weak var iosButton: NSButton!
-    
+    @IBOutlet weak var newValueTextFieldToLanguageConstraint: NSLayoutConstraint!
+    @IBOutlet weak var newValueTextFieldToSuperviewConstraint: NSLayoutConstraint!
+    @IBOutlet weak var languagePopUp: NSPopUpButton!
     
     // MARK: - Private
     private var currentKeysAndValues: [KeyAndValue]?
@@ -84,6 +89,13 @@ class StringsListWindowController: NSWindowController {
         return dict
     }
     
+    private var selectedLanguage: KeyAndValue.Language {
+        if let title = languagePopUp.selectedItem?.title,
+            let language = KeyAndValue.Language(title: title) {
+            return language
+        }
+        return .en
+    }
     
     // MARK: - Exposed Properties
     override var windowNibName: NSNib.Name? {
@@ -103,7 +115,7 @@ class StringsListWindowController: NSWindowController {
     override func windowDidLoad() {
         super.windowDidLoad()
         newStringsTableView.deleteDelegate = self
-        currentKeysAndValues = manager.latestStrings?.displayTuples
+        currentKeysAndValues = manager.displayTuples
         currentStringsTableView.reloadData()
         manager.delegate = self
         configureUI()
@@ -120,8 +132,8 @@ extension StringsListWindowController {
             loadingLabel.stringValue = "\(key) already in table!"
             return
         }
-        let newTuple = (key: key, value: value)
-        newKeysAndValuesToAdd.insert(newTuple, at: 0)
+        let newKeyAndValue = KeyAndValue(key: key, value: value, language: selectedLanguage)
+        newKeysAndValuesToAdd.insert(newKeyAndValue, at: 0)
         resetTextFields()
         newStringsTableView.reloadData()
     }
@@ -134,6 +146,7 @@ extension StringsListWindowController {
     }
     
     private func editedKeyAndValueAtRow(_ row: Int) -> KeyAndValue? {
+        let currentLanguage = currentKeyAndValueAtRow(row)?.language
         guard
             let keyCell = currentStringsTableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? NSTableCellView,
             let valueCell = currentStringsTableView.view(atColumn: 1, row: row, makeIfNecessary: false) as? NSTableCellView,
@@ -141,7 +154,7 @@ extension StringsListWindowController {
             let newValue = valueCell.textField?.stringValue else {
                 return nil
         }
-        return (newKey, newValue)
+        return KeyAndValue(key: newKey, value: newValue, language: currentLanguage)
         
     }
     
@@ -163,13 +176,22 @@ extension StringsListWindowController {
 extension StringsListWindowController {
     
     private func configureUI() {
-        setTitle()
+        setTitle(string: manager.latestMessage)
         resetTextFields()
         configureButtonStates()
         window?.center()
         let platform = UserDefaults.selectedPlatform
+        configurePopUpButtonConstraintsForPlatform(platform)
         selectedButton = (platform == .ios) ? iosButton : androidButton
         selectedButton?.state = .on
+        configurePopUp()
+    }
+    
+    private func configurePopUpButtonConstraintsForPlatform(_ platform: Platform) {
+        let isIos = platform == .ios
+        newValueTextFieldToLanguageConstraint.priority = isIos ? .defaultLow : .defaultHigh
+        newValueTextFieldToSuperviewConstraint.priority = isIos ? .defaultHigh : .defaultLow
+        languagePopUp.isHidden = platform == .ios
     }
     
     private func reset(error: StringEditError?) {
@@ -185,25 +207,31 @@ extension StringsListWindowController {
             newKeysAndValuesToAdd.removeAll()
             editedRowIndexes.removeAll()
             newStringsTableView.reloadData()
+            let string = commitMessage.isEmpty ? "Edited With Bitbucket" : commitMessage
+            setTitle(string: string)
             reloadCurrentKeysAndValues(afterPushing: true)
         }
         resetTextFields()
     }
     
-    private func setTitle() {
-        if let title = manager.latestMessage {
-            window?.title = "Commit: \(title)"
+    private func setTitle(string: String?) {
+        if let string = string {
+            window?.title = "Commit: \(string)"
+        }
+    }
+    
+    private func configurePopUp() {
+        for language in KeyAndValue.Language.allCases {
+            languagePopUp.addItem(withTitle: language.rawValue.uppercased())
         }
     }
     
     private func reloadCurrentKeysAndValues(afterPushing: Bool) {
-        
-        commitMessageTextField.stringValue = ""
-
-        currentKeysAndValues = manager.latestStrings?.displayTuples
+        currentKeysAndValues = manager.displayTuples
         currentStringsTableView.reloadData()
         loadingLabel.isHidden = !afterPushing
         configureButtonStates()
+        commitMessageTextField.stringValue = ""
     }
     
     private func resetTextFields() {
@@ -253,8 +281,9 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
             return nil
         }
         
-        let key = keysAndValues[row].key
-        let value = keysAndValues[row].value
+        let keyAndValue = keysAndValues[row]
+        let key = keyAndValue.key
+        let value = keyAndValue.value
         
         let identifier: String
         let text: String
@@ -272,6 +301,11 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
         }
         
         if let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(identifier), owner: nil) as? NSTableCellView {
+            let row = tableView.rowView(atRow: row, makeIfNecessary: false)
+            if tableView == currentStringsTableView {
+                cell.textField?.textColor = keyAndValue.isSeparator ? .white : .black
+                row?.backgroundColor = keyAndValue.isSeparator ? .black : .clear
+            }
             cell.textField?.stringValue = text
             cell.textField?.target = self
             cell.textField?.action = #selector(edit(_:))
@@ -306,14 +340,13 @@ extension StringsListWindowController: NSTextFieldDelegate {
         // Is the string the same?
         let currentString = sender.isKeyTextField ? currentKeyAndValue.key : currentKeyAndValue.value
         if text == currentString {
-            let removed = editedRowIndexes.remove(rowToUpdate)
-            print(removed)
+            editedRowIndexes.remove(rowToUpdate)
             configureButtonStates()
             return
         }
         
         // Has the string been left empty?
-        let shouldRefill = text.isEmpty
+        let shouldRefill = text.isEmpty || currentString.isContentVersion
         if shouldRefill {
             sender.stringValue = currentString
             return
@@ -351,3 +384,12 @@ extension StringsListWindowController: BitbucketManagerDelegate {
         }
     }
 }
+
+extension String {
+    
+    var isContentVersion: Bool {
+        return self == "content_version"
+    }
+    
+}
+ 

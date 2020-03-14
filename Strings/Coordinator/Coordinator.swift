@@ -9,6 +9,11 @@
 import Cocoa
 import StringEditorFramework
 
+protocol CoordinatorDelegate: class {
+    func coordinatorDidLogout(_ coordinator: Coordinator)
+    func coordinatorDidLogin(_ coordinator: Coordinator)
+}
+
 class Coordinator {
     
     // MARK: - Private Properties
@@ -18,10 +23,18 @@ class Coordinator {
         case strings
     }
     private var controllerType: ControllerType?
+    weak var delegate: CoordinatorDelegate?
     
     // MARK: - Exposed Methods
     func start() {
         currentController.showWindow(nil)
+        loadFromBitbucket()
+    }
+    
+    func logout() {
+        BitbucketManager.shared.logout()
+        currentController.close()
+        delegate?.coordinatorDidLogout(self)
         loadFromBitbucket()
     }
     
@@ -65,8 +78,10 @@ class Coordinator {
             let controller = LoginWindowController()
             controller.delegate = self
             currentController = controller
+            self.delegate?.coordinatorDidLogout(self)
         case .strings:
             currentController = StringsListWindowController()
+            self.delegate?.coordinatorDidLogin(self)
         }
         currentController.showWindow(nil)
         currentController.window?.center()

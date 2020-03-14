@@ -16,8 +16,8 @@
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <window title="Login" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="F0z-JX-Cv5">
-            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
+        <window title="Login" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" titlebarAppearsTransparent="YES" titleVisibility="hidden" id="F0z-JX-Cv5">
+            <windowStyleMask key="styleMask" titled="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="196" y="240" width="379" height="213"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1792" height="1120"/>
@@ -25,15 +25,8 @@
                 <rect key="frame" x="0.0" y="0.0" width="379" height="213"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="8QM-gJ-jpq">
-                        <rect key="frame" x="65" y="129" width="250" height="64"/>
-                        <constraints>
-                            <constraint firstAttribute="width" constant="250" id="XFx-Fm-mpn"/>
-                        </constraints>
-                        <imageCell key="cell" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" image="Bitbucket-blue" id="B1A-Ow-rpO"/>
-                    </imageView>
                     <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="IUa-Hb-jYJ">
-                        <rect key="frame" x="65" y="99" width="250" height="21"/>
+                        <rect key="frame" x="65" y="111" width="250" height="21"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="Username" drawsBackground="YES" id="YFO-vv-Elo">
                             <font key="font" metaFont="system"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -44,7 +37,7 @@
                         </connections>
                     </textField>
                     <textField verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="e7P-yr-VvX" customClass="NSSecureTextField">
-                        <rect key="frame" x="65" y="68" width="250" height="21"/>
+                        <rect key="frame" x="65" y="80" width="250" height="21"/>
                         <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="Password" drawsBackground="YES" id="esd-uC-ebf">
                             <font key="font" metaFont="system"/>
                             <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -67,6 +60,13 @@
                     <progressIndicator hidden="YES" wantsLayer="YES" maxValue="100" indeterminate="YES" controlSize="small" style="spinning" translatesAutoresizingMaskIntoConstraints="NO" id="xyA-ht-wPM">
                         <rect key="frame" x="182" y="23" width="16" height="16"/>
                     </progressIndicator>
+                    <imageView horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="8QM-gJ-jpq">
+                        <rect key="frame" x="65" y="149" width="250" height="64"/>
+                        <constraints>
+                            <constraint firstAttribute="width" constant="250" id="XFx-Fm-mpn"/>
+                        </constraints>
+                        <imageCell key="cell" refusesFirstResponder="YES" alignment="left" imageScaling="proportionallyDown" image="Bitbucket-blue" id="B1A-Ow-rpO"/>
+                    </imageView>
                 </subviews>
                 <constraints>
                     <constraint firstItem="e7P-yr-VvX" firstAttribute="top" secondItem="IUa-Hb-jYJ" secondAttribute="bottom" constant="10" id="PXs-tg-9Hh"/>
@@ -74,13 +74,13 @@
                     <constraint firstItem="IUa-Hb-jYJ" firstAttribute="centerX" secondItem="se5-gp-TjO" secondAttribute="centerX" id="cig-q7-z6g"/>
                     <constraint firstAttribute="bottom" secondItem="XPi-zU-NWc" secondAttribute="bottom" constant="20" id="f5L-MU-MsS"/>
                     <constraint firstItem="XPi-zU-NWc" firstAttribute="centerX" secondItem="se5-gp-TjO" secondAttribute="centerX" id="kQO-yh-tIK"/>
-                    <constraint firstItem="8QM-gJ-jpq" firstAttribute="top" secondItem="se5-gp-TjO" secondAttribute="top" constant="20" id="kgj-lE-ofZ"/>
+                    <constraint firstItem="8QM-gJ-jpq" firstAttribute="top" secondItem="se5-gp-TjO" secondAttribute="top" id="kgj-lE-ofZ"/>
                     <constraint firstItem="IUa-Hb-jYJ" firstAttribute="width" secondItem="8QM-gJ-jpq" secondAttribute="width" id="l06-ip-kEK"/>
                     <constraint firstItem="e7P-yr-VvX" firstAttribute="centerX" secondItem="se5-gp-TjO" secondAttribute="centerX" id="mEr-UF-RO9"/>
                     <constraint firstItem="e7P-yr-VvX" firstAttribute="width" secondItem="IUa-Hb-jYJ" secondAttribute="width" id="nLm-xd-L48"/>
                     <constraint firstItem="8QM-gJ-jpq" firstAttribute="centerX" secondItem="se5-gp-TjO" secondAttribute="centerX" id="rwc-pA-sgx"/>
                     <constraint firstAttribute="bottom" secondItem="xyA-ht-wPM" secondAttribute="bottom" constant="23" id="tdv-RO-T1V"/>
-                    <constraint firstItem="XPi-zU-NWc" firstAttribute="top" secondItem="e7P-yr-VvX" secondAttribute="bottom" constant="27" id="ty8-ko-pbH"/>
+                    <constraint firstItem="XPi-zU-NWc" firstAttribute="top" secondItem="e7P-yr-VvX" secondAttribute="bottom" constant="39" id="ty8-ko-pbH"/>
                 </constraints>
             </view>
             <connections>

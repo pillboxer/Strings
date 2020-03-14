@@ -26,8 +26,7 @@ class LoginWindowController: NSWindowController {
     @IBAction func ctaPressed(_ sender: Any) {
         disableInterfaceForLogin(true)
         guard BitbucketManager.shared.storeCredentials(username: username, password: password) else {
-            #warning("Handle")
-            return
+            fatalError("Could not store credentials")
         }
         self.delegate?.loginWindowControllerDidStoreCredentials(self)
     }
