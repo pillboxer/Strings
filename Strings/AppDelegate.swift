@@ -23,6 +23,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         loginLogoutButton.isHidden = true
         coordinator.start()
     }
+    
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        return true
+    }
         
     @IBAction func logout(_ sender: Any) {
         coordinator.logout()

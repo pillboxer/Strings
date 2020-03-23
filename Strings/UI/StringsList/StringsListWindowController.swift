@@ -303,7 +303,7 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
         if let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(identifier), owner: nil) as? NSTableCellView {
             let row = tableView.rowView(atRow: row, makeIfNecessary: false)
             if tableView == currentStringsTableView {
-                cell.textField?.textColor = keyAndValue.isSeparator ? .white : .black
+                cell.textField?.textColor = keyAndValue.isSeparator ? .white : .labelColor
                 row?.backgroundColor = keyAndValue.isSeparator ? .black : .clear
             }
             cell.textField?.stringValue = text
@@ -332,7 +332,6 @@ extension StringsListWindowController: NSTextFieldDelegate {
     @objc private func edit(_ sender: NSTextField) {
         let text = sender.stringValue.trimmingCharacters(in: .whitespaces)
         let rowToUpdate = currentStringsTableView.row(for: sender)
-        print(rowToUpdate)
         guard rowToUpdate != -1, let currentKeyAndValue = currentKeyAndValueAtRow(rowToUpdate) else {
             return
         }
