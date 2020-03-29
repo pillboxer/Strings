@@ -31,6 +31,51 @@ class StringsListWindowController: NSWindowController {
         }
     }
     
+    @IBAction func environmentButtonPressed(_ sender: Any) {
+        Environment.setEnvironment(!Environment.isDev)
+        BitbucketManager.shared.load { (error) in
+            DispatchQueue.main.async {
+                self.spinner.isHidden = true
+                if let error = error {
+                    self.showErrorAlert(error)
+                }
+                else {
+                    self.reloadCurrentKeysAndValues(afterPushing: false)
+                    self.setTitle(string: self.manager.latestMessage)
+                }
+            }
+        }
+    }
+    
+    @IBAction func filterButtonPressed(_ sender: NSButton) {
+        
+        #error("Change me")
+        if sender.state == .off {
+            currentKeysAndValues = manager.displayTuples
+            currentStringsTableView.reloadData()
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Filter"
+        alert.addButton(withTitle: "Filter")
+        alert.addButton(withTitle: "Cancel")
+        let textFieldFrame = CGRect(x: 0, y: 0, width: 200, height: 24)
+        let keyTextField = NSTextField(frame: textFieldFrame)
+        keyTextField.placeholderString = "Key Or Value"
+        alert.accessoryView = keyTextField
+        alert.beginSheetModal(for: window!) { (response) in
+            if response == .alertFirstButtonReturn {
+                guard !keyTextField.stringValue.isEmpty else {
+                    return
+                }
+                self.filterKeysAndValues(text: keyTextField.stringValue)
+            }
+            else {
+                sender.state = .off
+            }
+        }
+    }
+    
     @IBAction func radioButtonSelected(_ sender: NSButton) {
         guard sender != selectedButton else {
             return
@@ -41,7 +86,7 @@ class StringsListWindowController: NSWindowController {
             DispatchQueue.main.async {
                 self.spinner.isHidden = true
                 if let error = error {
-                    self.showSwitchingError(error)
+                    self.showErrorAlert(error)
                     oldPlatformButton?.state = .on
                 }
                 else {
@@ -54,7 +99,7 @@ class StringsListWindowController: NSWindowController {
         }
         currentStringsTableView.reloadData()
     }
-        
+    
     // MARK: - IBOutlets
     @IBOutlet weak var currentStringsTableView: NSTableView!
     @IBOutlet weak var newKeyTextField: NSTextField!
@@ -70,7 +115,8 @@ class StringsListWindowController: NSWindowController {
     @IBOutlet weak var newValueTextFieldToLanguageConstraint: NSLayoutConstraint!
     @IBOutlet weak var newValueTextFieldToSuperviewConstraint: NSLayoutConstraint!
     @IBOutlet weak var languagePopUp: NSPopUpButton!
-    @IBOutlet weak var environmentView: NSView!
+    @IBOutlet weak var environmentButton: NSButton!
+    @IBOutlet weak var filterButton: NSButton!
     
     // MARK: - Private
     private var currentKeysAndValues: [KeyAndValue]?
@@ -115,10 +161,6 @@ class StringsListWindowController: NSWindowController {
     // MARK: - Life Cycle
     override func windowDidLoad() {
         super.windowDidLoad()
-        if Environment.isDev {
-            environmentView.wantsLayer = true
-            environmentView.layer?.backgroundColor = NSColor.blue.cgColor
-        }
         newStringsTableView.deleteDelegate = self
         currentKeysAndValues = manager.displayTuples
         currentStringsTableView.reloadData()
@@ -175,12 +217,26 @@ extension StringsListWindowController {
     private var commitMessage: String {
         return commitMessageTextField.stringValue
     }
+    
+    private func filterKeysAndValues(text: String) {
+        currentKeysAndValues = currentKeysAndValues?.compactMap() { keyAndValue in
+            if keyAndValue.key.localizedCaseInsensitiveContains(text) || keyAndValue.value.localizedCaseInsensitiveContains(text) {
+                return keyAndValue
+            }
+            else {
+                return nil
+            }
+        }
+        currentStringsTableView.reloadData()
+    }
 }
 
 // MARK: - UI
 extension StringsListWindowController {
     
     private func configureUI() {
+        #error("Change me")
+        filterButton.isHidden = true
         setTitle(string: manager.latestMessage)
         resetTextFields()
         configureButtonStates()
@@ -190,6 +246,7 @@ extension StringsListWindowController {
         selectedButton = (platform == .ios) ? iosButton : androidButton
         selectedButton?.state = .on
         configurePopUp()
+        configureEnvironmentButton()
     }
     
     private func configurePopUpButtonConstraintsForPlatform(_ platform: Platform) {
@@ -202,7 +259,6 @@ extension StringsListWindowController {
     private func reset(error: StringEditError?) {
         // The spinner should always hide
         spinner.isHidden = true
-        
         if let error = error {
             loadingLabel.isHidden = true
             NSAlert.showSimpleAlert(window: window, title: "Error", message: error.localizedDescription, completion: nil)
@@ -234,9 +290,11 @@ extension StringsListWindowController {
     private func reloadCurrentKeysAndValues(afterPushing: Bool) {
         currentKeysAndValues = manager.displayTuples
         currentStringsTableView.reloadData()
+        currentStringsTableView.scrollRowToVisible(0)
         loadingLabel.isHidden = !afterPushing
         configureButtonStates()
         commitMessageTextField.stringValue = ""
+        configureEnvironmentButton()
     }
     
     private func resetTextFields() {
@@ -257,9 +315,18 @@ extension StringsListWindowController {
         ctaButton.isEnabled = !newKeysAndValuesToAdd.isEmpty || !editedStrings.isEmpty
     }
     
-    private func showSwitchingError(_ error: RequestError) {
+    private func showErrorAlert(_ error: RequestError) {
         NSAlert.showSimpleAlert(window: self.window, isError: true, title: "Error", message: error.localizedDescription) {
             self.loadingLabel.isHidden = true
+        }
+    }
+    
+    private func configureEnvironmentButton() {
+        if Environment.isDev {
+            environmentButton.image = NSImage(named: NSImage.Name("NSStatusPartiallyAvailable"))
+        }
+        else {
+            environmentButton.image = NSImage(named: NSImage.Name("NSStatusUnavailable"))
         }
     }
 }
@@ -306,10 +373,11 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
         }
         
         if let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(identifier), owner: nil) as? NSTableCellView {
-            let row = tableView.rowView(atRow: row, makeIfNecessary: false)
+            let rowView = tableView.rowView(atRow: row, makeIfNecessary: false)
             if tableView == currentStringsTableView {
                 cell.textField?.textColor = keyAndValue.isSeparator ? .white : .labelColor
-                row?.backgroundColor = keyAndValue.isSeparator ? .black : .clear
+                let currentBackgroundColor = rowView?.backgroundColor ?? .clear
+                rowView?.backgroundColor = keyAndValue.isSeparator ? .black : currentBackgroundColor
             }
             cell.textField?.stringValue = text
             cell.textField?.target = self
