@@ -70,6 +70,7 @@ class StringsListWindowController: NSWindowController {
     @IBOutlet weak var newValueTextFieldToLanguageConstraint: NSLayoutConstraint!
     @IBOutlet weak var newValueTextFieldToSuperviewConstraint: NSLayoutConstraint!
     @IBOutlet weak var languagePopUp: NSPopUpButton!
+    @IBOutlet weak var environmentView: NSView!
     
     // MARK: - Private
     private var currentKeysAndValues: [KeyAndValue]?
@@ -114,6 +115,10 @@ class StringsListWindowController: NSWindowController {
     // MARK: - Life Cycle
     override func windowDidLoad() {
         super.windowDidLoad()
+        if Environment.isDev {
+            environmentView.wantsLayer = true
+            environmentView.layer?.backgroundColor = NSColor.blue.cgColor
+        }
         newStringsTableView.deleteDelegate = self
         currentKeysAndValues = manager.displayTuples
         currentStringsTableView.reloadData()
