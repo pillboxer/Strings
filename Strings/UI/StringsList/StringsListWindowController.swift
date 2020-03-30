@@ -32,46 +32,46 @@ class StringsListWindowController: NSWindowController {
     }
     
     @IBAction func environmentButtonPressed(_ sender: Any) {
-        Environment.setEnvironment(!Environment.isDev)
-        BitbucketManager.shared.load { (error) in
-            DispatchQueue.main.async {
-                self.spinner.isHidden = true
-                if let error = error {
-                    self.showErrorAlert(error)
-                }
-                else {
-                    self.reloadCurrentKeysAndValues(afterPushing: false)
-                    self.setTitle(string: self.manager.latestMessage)
+        
+        shouldContinueAfterCheckingForUncommittedChanges { (shouldContinue) in
+            if shouldContinue {
+                Environment.setEnvironment(!Environment.isDev)
+                BitbucketManager.shared.load { (error) in
+                    DispatchQueue.main.async {
+                        self.spinner.isHidden = true
+                        if let error = error {
+                            self.showErrorAlert(error)
+                        }
+                        else {
+                            self.reloadCurrentKeysAndValues(afterPushing: false)
+                            self.setTitle(string: self.manager.latestMessage)
+                        }
+                    }
                 }
             }
+            else {
+                return
+            }
         }
+        
+        
+        
     }
     
     @IBAction func filterButtonPressed(_ sender: NSButton) {
         
-        #error("Change me")
         if sender.state == .off {
-            currentKeysAndValues = manager.displayTuples
-            currentStringsTableView.reloadData()
+            cancelFilter()
             return
         }
-        let alert = NSAlert()
-        alert.messageText = "Filter"
-        alert.addButton(withTitle: "Filter")
-        alert.addButton(withTitle: "Cancel")
-        let textFieldFrame = CGRect(x: 0, y: 0, width: 200, height: 24)
-        let keyTextField = NSTextField(frame: textFieldFrame)
-        keyTextField.placeholderString = "Key Or Value"
-        alert.accessoryView = keyTextField
-        alert.beginSheetModal(for: window!) { (response) in
-            if response == .alertFirstButtonReturn {
-                guard !keyTextField.stringValue.isEmpty else {
-                    return
-                }
-                self.filterKeysAndValues(text: keyTextField.stringValue)
+        filterEnabled = true
+        
+        NSAlert.showSingleTextFieldAlert(window: window, title: "Filter", textFieldPlaceholder: "Key Or Value", returnButtonTitle: "Filter") { (filterValue) in
+            if let filterValue = filterValue {
+                self.filterKeysAndValues(text: filterValue)
             }
             else {
-                sender.state = .off
+                self.cancelFilter()
             }
         }
     }
@@ -82,31 +82,40 @@ class StringsListWindowController: NSWindowController {
         }
         let newPlatform: Platform = (sender == iosButton) ? .ios : .android
         let oldPlatformButton = (sender == iosButton) ? androidButton : iosButton
-        BitbucketManager.shared.changePlatformTo(newPlatform) { (error) in
-            DispatchQueue.main.async {
-                self.spinner.isHidden = true
-                if let error = error {
-                    self.showErrorAlert(error)
-                    oldPlatformButton?.state = .on
-                }
-                else {
-                    self.selectedButton = sender
-                    self.configurePopUpButtonConstraintsForPlatform(newPlatform)
-                    self.reloadCurrentKeysAndValues(afterPushing: false)
-                    self.setTitle(string: self.manager.latestMessage)
+        
+        shouldContinueAfterCheckingForUncommittedChanges { (shouldContinue) in
+            if shouldContinue {
+                self.editedKeysAndValues.removeAll()
+                BitbucketManager.shared.changePlatformTo(newPlatform) { (error) in
+                    DispatchQueue.main.async {
+                        self.cancelFilter()
+                        self.spinner.isHidden = true
+                        if let error = error {
+                            self.showErrorAlert(error)
+                            oldPlatformButton?.state = .on
+                        }
+                        else {
+                            self.selectedButton = sender
+                            self.configurePopUpButtonConstraintsForPlatform(newPlatform)
+                            self.reloadCurrentKeysAndValues(afterPushing: false)
+                            self.setTitle(string: self.manager.latestMessage)
+                        }
+                    }
                 }
             }
+            else {
+                oldPlatformButton?.state = .on
+            }
         }
-        currentStringsTableView.reloadData()
     }
     
     // MARK: - IBOutlets
-    @IBOutlet weak var currentStringsTableView: NSTableView!
+    @IBOutlet weak var topTableView: NSTableView!
     @IBOutlet weak var newKeyTextField: NSTextField!
     @IBOutlet weak var newValueTextField: NSTextField!
     @IBOutlet weak var commitMessageTextField: NSTextField!
     @IBOutlet weak var addButton: NSButton!
-    @IBOutlet weak var newStringsTableView: UIHelperTableView!
+    @IBOutlet weak var bottomTableView: UIHelperTableView!
     @IBOutlet weak var ctaButton: NSButton!
     @IBOutlet weak var loadingLabel: NSTextField!
     @IBOutlet weak var spinner: NSProgressIndicator!
@@ -119,23 +128,28 @@ class StringsListWindowController: NSWindowController {
     @IBOutlet weak var filterButton: NSButton!
     
     // MARK: - Private
-    private var currentKeysAndValues: [KeyAndValue]?
-    private var newKeysAndValuesToAdd = [KeyAndValue]()
-    private var editedRowIndexes = Set<Int>()
     private let manager = BitbucketManager.shared
-    private var selectedButton: NSButton?
     
+    private var originalKeysAndValues: [KeyAndValue]?
+    private var currentKeysAndValues: [KeyAndValue]?
+    private var filteredKeysAndValues: [KeyAndValue]?
+    private var editedKeysAndValues = [Int: KeyAndValue]() {
+        didSet {
+            updateCurrentKeysAndValues()
+        }
+    }
+    private var filterEnabled = false
+    private var newKeysAndValuesToAdd = [KeyAndValue]()
+    private var selectedButton: NSButton?
     private var editedStrings: [String: KeyAndValue] {
         var dict = [String : KeyAndValue]()
-        for row in editedRowIndexes {
-            if let currentKey = currentKeyAndValueAtRow(row)?.key,
-                let editedKeyAndValue = editedKeyAndValueAtRow(row) {
-                dict[currentKey] = editedKeyAndValue
+        for (row, keyAndValue) in editedKeysAndValues {
+            if let currentKey = currentKeyAndValueAtRow(row)?.key {
+                dict[currentKey] = keyAndValue
             }
         }
         return dict
     }
-    
     private var selectedLanguage: KeyAndValue.Language {
         if let title = languagePopUp.selectedItem?.title,
             let language = KeyAndValue.Language(title: title) {
@@ -161,9 +175,10 @@ class StringsListWindowController: NSWindowController {
     // MARK: - Life Cycle
     override func windowDidLoad() {
         super.windowDidLoad()
-        newStringsTableView.deleteDelegate = self
-        currentKeysAndValues = manager.displayTuples
-        currentStringsTableView.reloadData()
+        bottomTableView.deleteDelegate = self
+        originalKeysAndValues = manager.displayTuples
+        currentKeysAndValues = originalKeysAndValues
+        topTableView.reloadData()
         manager.delegate = self
         configureUI()
     }
@@ -174,44 +189,49 @@ extension StringsListWindowController {
     
     private func addToKeysAndValues(key: String, value: String) {
         let keys = newKeysAndValuesToAdd.map() { $0.key }
-        if keys.contains(key) {
+        let newKeyAndValue = KeyAndValue(key: key, value: value, language: selectedLanguage)
+        let alreadyInTopTable = (currentKeysAndValues?.contains() { $0.key == key }) ?? false
+        if keys.contains(key) || alreadyInTopTable {
+            let message = alreadyInTopTable ? "\(key) already in strings above!" : "\(key) already added below!"
             loadingLabel.isHidden = false
-            loadingLabel.stringValue = "\(key) already in table!"
+            loadingLabel.stringValue = message
             return
         }
-        let newKeyAndValue = KeyAndValue(key: key, value: value, language: selectedLanguage)
         newKeysAndValuesToAdd.insert(newKeyAndValue, at: 0)
         resetTextFields()
-        newStringsTableView.reloadData()
+        bottomTableView.reloadData()
+    }
+    
+    private func topTableViewKeyAndValueAtRow(_ row: Int) -> KeyAndValue? {
+        if let _ = filteredKeysAndValues {
+            return filteredKeyAndValueAtRow(row)
+        }
+        else if let _ = currentKeysAndValues {
+            return currentKeyAndValueAtRow(row)
+        }
+        return nil
     }
     
     private func currentKeyAndValueAtRow(_ row: Int) -> KeyAndValue? {
-        guard let currentKeysAndValues = currentKeysAndValues else {
-            return nil
-        }
-        return currentKeysAndValues[row]
+        return currentKeysAndValues?[row]
     }
     
-    private func editedKeyAndValueAtRow(_ row: Int) -> KeyAndValue? {
-        let currentLanguage = currentKeyAndValueAtRow(row)?.language
-        guard
-            let keyCell = currentStringsTableView.view(atColumn: 0, row: row, makeIfNecessary: false) as? NSTableCellView,
-            let valueCell = currentStringsTableView.view(atColumn: 1, row: row, makeIfNecessary: false) as? NSTableCellView,
-            let newKey = keyCell.textField?.stringValue,
-            let newValue = valueCell.textField?.stringValue else {
-                return nil
-        }
-        return KeyAndValue(key: newKey, value: newValue, language: currentLanguage)
-        
+    private func filteredKeyAndValueAtRow(_ row: Int) -> KeyAndValue? {
+        return filteredKeysAndValues?[row]
     }
+    
     
     private func correctKeysAndValuesForTableVew(_ tableView: NSTableView) -> [KeyAndValue]? {
-        if tableView == self.currentStringsTableView {
-            return currentKeysAndValues
+        if tableView == self.topTableView {
+            return correctKeysAndValuesForTopTableView?.sorted() { $0.key < $1.key }
         }
         else {
-            return newKeysAndValuesToAdd
+            return newKeysAndValuesToAdd.sorted() { $0.key < $1.key }
         }
+    }
+    
+    private var correctKeysAndValuesForTopTableView: [KeyAndValue]? {
+        return  filteredKeysAndValues ?? currentKeysAndValues
     }
     
     private var commitMessage: String {
@@ -219,7 +239,7 @@ extension StringsListWindowController {
     }
     
     private func filterKeysAndValues(text: String) {
-        currentKeysAndValues = currentKeysAndValues?.compactMap() { keyAndValue in
+        filteredKeysAndValues = currentKeysAndValues?.compactMap() { keyAndValue in
             if keyAndValue.key.localizedCaseInsensitiveContains(text) || keyAndValue.value.localizedCaseInsensitiveContains(text) {
                 return keyAndValue
             }
@@ -227,16 +247,22 @@ extension StringsListWindowController {
                 return nil
             }
         }
-        currentStringsTableView.reloadData()
+        topTableView.reloadData()
     }
+    
+    private func updateCurrentKeysAndValues() {
+        for (row, keyAndValue) in editedKeysAndValues {
+            let newKeyAndValue = KeyAndValue(key: keyAndValue.key, value: keyAndValue.value, language: keyAndValue.language)
+            currentKeysAndValues?[row] = newKeyAndValue
+        }
+    }
+    
 }
 
 // MARK: - UI
 extension StringsListWindowController {
     
     private func configureUI() {
-        #error("Change me")
-        filterButton.isHidden = true
         setTitle(string: manager.latestMessage)
         resetTextFields()
         configureButtonStates()
@@ -266,8 +292,8 @@ extension StringsListWindowController {
         else {
             loadingLabel.stringValue = "Upload successful"
             newKeysAndValuesToAdd.removeAll()
-            editedRowIndexes.removeAll()
-            newStringsTableView.reloadData()
+            editedKeysAndValues.removeAll()
+            bottomTableView.reloadData()
             let string = commitMessage.isEmpty ? "Edited With Bitbucket" : commitMessage
             setTitle(string: string)
             reloadCurrentKeysAndValues(afterPushing: true)
@@ -281,6 +307,13 @@ extension StringsListWindowController {
         }
     }
     
+    private func cancelFilter() {
+        filteredKeysAndValues = nil
+        topTableView.reloadData()
+        topTableView.scrollRowToVisible(0)
+        filterButton.state = .off
+    }
+    
     private func configurePopUp() {
         for language in KeyAndValue.Language.allCases {
             languagePopUp.addItem(withTitle: language.rawValue.uppercased())
@@ -288,9 +321,9 @@ extension StringsListWindowController {
     }
     
     private func reloadCurrentKeysAndValues(afterPushing: Bool) {
-        currentKeysAndValues = manager.displayTuples
-        currentStringsTableView.reloadData()
-        currentStringsTableView.scrollRowToVisible(0)
+        originalKeysAndValues = manager.displayTuples
+        currentKeysAndValues = originalKeysAndValues
+        cancelFilter()
         loadingLabel.isHidden = !afterPushing
         configureButtonStates()
         commitMessageTextField.stringValue = ""
@@ -329,19 +362,44 @@ extension StringsListWindowController {
             environmentButton.image = NSImage(named: NSImage.Name("NSStatusUnavailable"))
         }
     }
+    
+    private func shouldContinueAfterCheckingForUncommittedChanges(completion: @escaping (Bool) -> Void) {
+        guard !editedKeysAndValues.isEmpty else {
+            completion(true)
+            return
+        }
+        
+        let changeOrChanges = (editedKeysAndValues.count == 1) ? "change" : "changes"
+        NSAlert.showDualButtonAlert(window: window, title: "Unsaved Changes", message: "You currently have \(editedKeysAndValues.count) unsaved \(changeOrChanges). Are you sure you wish to continue?", returnButtonTitle: "Discard My Changes And Continue") { response in
+            completion(response == .alertFirstButtonReturn)
+        }
+    }
 }
 
 // MARK: - Table View Data Source
 extension StringsListWindowController: NSTableViewDataSource {
     
     func numberOfRows(in tableView: NSTableView) -> Int {
-        if tableView == self.currentStringsTableView {
-            return currentKeysAndValues?.count ?? 0
+        if tableView == self.topTableView {
+            return numberOfRowsForCurrentOrFilteredTableView
         }
-        else if tableView == newStringsTableView {
-            return newKeysAndValuesToAdd.count
+        else if tableView == bottomTableView {
+            return numberOfRowsForNewKeysAndValuesTableView
         }
         return 0
+    }
+    
+    private var numberOfRowsForCurrentOrFilteredTableView: Int {
+        if let _ = filteredKeysAndValues {
+            return filteredKeysAndValues?.count ?? 0
+        }
+        else {
+            return currentKeysAndValues?.count ?? 0
+        }
+    }
+    
+    private var numberOfRowsForNewKeysAndValuesTableView: Int {
+        return newKeysAndValuesToAdd.count
     }
 }
 
@@ -361,10 +419,10 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
         let text: String
         
         switch column.identifier {
-        case NSUserInterfaceItemIdentifier(rawValue: "KeyColumn"):
+        case .key:
             identifier = "KeyView"
             text = key
-        case NSUserInterfaceItemIdentifier(rawValue: "ValueColumn"):
+        case .value:
             identifier = "ValueView"
             text = value
         default:
@@ -373,12 +431,15 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
         }
         
         if let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(identifier), owner: nil) as? NSTableCellView {
+            
             let rowView = tableView.rowView(atRow: row, makeIfNecessary: false)
-            if tableView == currentStringsTableView {
+            
+            if tableView == topTableView {
                 cell.textField?.textColor = keyAndValue.isSeparator ? .white : .labelColor
                 let currentBackgroundColor = rowView?.backgroundColor ?? .clear
                 rowView?.backgroundColor = keyAndValue.isSeparator ? .black : currentBackgroundColor
             }
+            
             cell.textField?.stringValue = text
             cell.textField?.target = self
             cell.textField?.action = #selector(edit(_:))
@@ -390,7 +451,7 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
     
     func uiHelperTableViewShouldDeleteRow(tableView: UIHelperTableView, rowToDelete: Int) {
         newKeysAndValuesToAdd.remove(at: rowToDelete)
-        newStringsTableView.reloadData()
+        bottomTableView.reloadData()
         configureButtonStates()
     }
 }
@@ -404,27 +465,47 @@ extension StringsListWindowController: NSTextFieldDelegate {
     
     @objc private func edit(_ sender: NSTextField) {
         let text = sender.stringValue.trimmingCharacters(in: .whitespaces)
-        let rowToUpdate = currentStringsTableView.row(for: sender)
-        guard rowToUpdate != -1, let currentKeyAndValue = currentKeyAndValueAtRow(rowToUpdate) else {
-            return
+        // 'Updating' means to change the text of a specific row. There are potentially two rows to update, depending on whether we are filtering or not.
+        let visibleRow = topTableView.row(for: sender)
+        guard visibleRow != -1,
+            let currentKeyAndValueToUpdate = topTableViewKeyAndValueAtRow(visibleRow),
+            let rowToIndex = currentKeysAndValues?.firstIndex(of: currentKeyAndValueToUpdate),
+            let existingKeyAndValue = currentKeysAndValues?[rowToIndex],
+            let originalKeyAndValue = originalKeysAndValues?[rowToIndex] else {
+                return
         }
         
         // Is the string the same?
-        let currentString = sender.isKeyTextField ? currentKeyAndValue.key : currentKeyAndValue.value
-        if text == currentString {
-            editedRowIndexes.remove(rowToUpdate)
+        let newKey = sender.isKeyTextField ? text : existingKeyAndValue.key
+        let newValue = sender.isKeyTextField ? existingKeyAndValue.value : text
+        let newKeyAndValue = KeyAndValue(key: newKey, value: newValue, language: existingKeyAndValue.language)
+        
+        let newKeyAlreadyExists = currentKeysAndValues?.contains() { newKey == $0.key  } ?? false
+        if sender.isKeyTextField && newKeyAlreadyExists {
+            NSAlert.showSimpleAlert(window: window, isError: true, title: "Error", message: "\(newKey) already exists in the JSON. You'll need to edit that string") {
+                sender.stringValue = existingKeyAndValue.key
+            }
+            return
+        }
+        
+        if newKeyAndValue == originalKeyAndValue {
+            editedKeysAndValues.removeValue(forKey: rowToIndex)
+            currentKeysAndValues?[rowToIndex] = originalKeyAndValue
+            filteredKeysAndValues?[visibleRow] = originalKeyAndValue
             configureButtonStates()
             return
         }
         
+        let editingContentVersion = (sender.isKeyTextField && existingKeyAndValue.key.isContentVersion)
         // Has the string been left empty?
-        let shouldRefill = text.isEmpty || currentString.isContentVersion
+        let shouldRefill = text.isEmpty || editingContentVersion
         if shouldRefill {
-            sender.stringValue = currentString
+            sender.stringValue = existingKeyAndValue.key
             return
         }
         
-        editedRowIndexes.insert(rowToUpdate)
+        editedKeysAndValues[rowToIndex] = newKeyAndValue
+        filteredKeysAndValues?[visibleRow] = newKeyAndValue
         configureButtonStates()
     }
 }
@@ -457,11 +538,20 @@ extension StringsListWindowController: BitbucketManagerDelegate {
     }
 }
 
-extension String {
-    
+private extension String {
     var isContentVersion: Bool {
         return self == "content_version"
     }
-    
 }
- 
+
+private extension NSUserInterfaceItemIdentifier {
+    
+    static var key: NSUserInterfaceItemIdentifier {
+        return NSUserInterfaceItemIdentifier("KeyColumn")
+    }
+    
+    static var value: NSUserInterfaceItemIdentifier {
+        return NSUserInterfaceItemIdentifier("ValueColumn")
+    }
+}
+

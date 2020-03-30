@@ -10,20 +10,20 @@
             <connections>
                 <outlet property="addButton" destination="feQ-wy-SJn" id="43W-5u-LRV"/>
                 <outlet property="androidButton" destination="Bz2-rc-6EL" id="uA5-c3-5SP"/>
+                <outlet property="bottomTableView" destination="3O2-rd-GV3" id="J5J-kA-lLq"/>
                 <outlet property="commitMessageTextField" destination="5n5-aZ-Tlu" id="fus-Fn-whP"/>
                 <outlet property="ctaButton" destination="FvS-3h-POJ" id="XEc-to-iH0"/>
-                <outlet property="currentStringsTableView" destination="EUd-vs-ui2" id="O7s-vS-4L9"/>
                 <outlet property="environmentButton" destination="zWI-Wo-1Qq" id="BTL-nD-yod"/>
                 <outlet property="filterButton" destination="CTf-w2-lhR" id="FPf-Yh-hkg"/>
                 <outlet property="iosButton" destination="9VH-Sf-TvZ" id="HNo-Zh-XNg"/>
                 <outlet property="languagePopUp" destination="snu-UV-fa9" id="qCu-iq-xCk"/>
                 <outlet property="loadingLabel" destination="dB7-l6-2gq" id="HO5-Bc-3E4"/>
                 <outlet property="newKeyTextField" destination="hzJ-AO-K1H" id="QzM-bn-JDq"/>
-                <outlet property="newStringsTableView" destination="3O2-rd-GV3" id="J5J-kA-lLq"/>
                 <outlet property="newValueTextField" destination="hnq-Sa-Kce" id="0SO-y2-asT"/>
                 <outlet property="newValueTextFieldToLanguageConstraint" destination="deG-8V-O4z" id="DOx-V5-r2l"/>
                 <outlet property="newValueTextFieldToSuperviewConstraint" destination="Zqt-ie-YV6" id="gXK-pM-PMi"/>
                 <outlet property="spinner" destination="xIU-aU-AaB" id="W6J-dU-SO6"/>
+                <outlet property="topTableView" destination="EUd-vs-ui2" id="O7s-vS-4L9"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="KDp-mB-5sg"/>
             </connections>
         </customObject>
@@ -53,7 +53,7 @@
                                     <tableColumns>
                                         <tableColumn identifier="KeyColumn" width="264" minWidth="40" maxWidth="1000" id="fdt-ND-vnJ">
                                             <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" title="Key">
-                                                <font key="font" metaFont="menu" size="11"/>
+                                                <font key="font" metaFont="label" size="11"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
                                             </tableHeaderCell>
@@ -86,7 +86,7 @@
                                         </tableColumn>
                                         <tableColumn identifier="ValueColumn" width="374" minWidth="40" maxWidth="1000" id="PyX-3y-vKe">
                                             <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" title="Value">
-                                                <font key="font" metaFont="menu" size="11"/>
+                                                <font key="font" metaFont="label" size="11"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
                                             </tableHeaderCell>
@@ -153,7 +153,7 @@
                                     <tableColumns>
                                         <tableColumn identifier="KeyColumn" width="264" minWidth="40" maxWidth="1000" id="dWx-3v-ZyZ">
                                             <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" title="Key">
-                                                <font key="font" metaFont="menu" size="11"/>
+                                                <font key="font" metaFont="label" size="11"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
                                             </tableHeaderCell>
@@ -186,7 +186,7 @@
                                         </tableColumn>
                                         <tableColumn identifier="ValueColumn" width="374" minWidth="40" maxWidth="1000" id="hda-Qn-Yw0">
                                             <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" title="Value">
-                                                <font key="font" metaFont="menu" size="11"/>
+                                                <font key="font" metaFont="label" size="11"/>
                                                 <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
                                                 <color key="backgroundColor" name="headerColor" catalog="System" colorSpace="catalog"/>
                                             </tableHeaderCell>
