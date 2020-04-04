@@ -16,7 +16,7 @@ class StringsListWindowController: NSWindowController {
     // MARK: - Action Methods
     @IBAction func addButtonPressed(_ sender: Any) {
         let newKey = newKeyTextField.stringValue.trimmingCharacters(in: .whitespaces)
-        let newValue = newValueTextField.stringValue.trimmingCharacters(in: .whitespaces)
+        let newValue = newValueTextField.string.trimmingCharacters(in: .whitespaces)
         addToKeysAndValues(key: newKey, value: newValue)
     }
     
@@ -53,9 +53,6 @@ class StringsListWindowController: NSWindowController {
                 return
             }
         }
-        
-        
-        
     }
     
     @IBAction func filterButtonPressed(_ sender: NSButton) {
@@ -112,7 +109,7 @@ class StringsListWindowController: NSWindowController {
     // MARK: - IBOutlets
     @IBOutlet weak var topTableView: NSTableView!
     @IBOutlet weak var newKeyTextField: NSTextField!
-    @IBOutlet weak var newValueTextField: NSTextField!
+    @IBOutlet weak var newValueTextField: PlaceholderTextView!
     @IBOutlet weak var commitMessageTextField: NSTextField!
     @IBOutlet weak var addButton: NSButton!
     @IBOutlet weak var bottomTableView: UIHelperTableView!
@@ -123,6 +120,7 @@ class StringsListWindowController: NSWindowController {
     @IBOutlet weak var iosButton: NSButton!
     @IBOutlet weak var newValueTextFieldToLanguageConstraint: NSLayoutConstraint!
     @IBOutlet weak var newValueTextFieldToSuperviewConstraint: NSLayoutConstraint!
+
     @IBOutlet weak var languagePopUp: NSPopUpButton!
     @IBOutlet weak var environmentButton: NSButton!
     @IBOutlet weak var filterButton: NSButton!
@@ -331,20 +329,21 @@ extension StringsListWindowController {
     }
     
     private func resetTextFields() {
-        newValueTextField.stringValue = ""
+        newValueTextField.string = ""
         newKeyTextField.stringValue = ""
+        newValueTextField.placeholderAttributedString = NSMutableAttributedString(string: "New Value")
         enableInterface(true)
         newKeyTextField.becomeFirstResponder()
     }
     
     private func enableInterface(_ enabled: Bool) {
         newKeyTextField.isEnabled = enabled
-        newValueTextField.isEnabled = enabled
+        newValueTextField.isEditable = enabled
         configureButtonStates()
     }
     
     private func configureButtonStates() {
-        addButton.isEnabled = !newKeyTextField.stringValue.isEmpty && !newValueTextField.stringValue.isEmpty
+        addButton.isEnabled = !newKeyTextField.stringValue.isEmpty && !newValueTextField.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         ctaButton.isEnabled = !newKeysAndValuesToAdd.isEmpty || !editedStrings.isEmpty
     }
     
@@ -456,13 +455,18 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
     }
 }
 
-extension StringsListWindowController: NSTextFieldDelegate {
+extension StringsListWindowController: NSTextFieldDelegate, NSTextViewDelegate {
     
     func controlTextDidChange(_ obj: Notification) {
         loadingLabel.isHidden = true
         configureButtonStates()
     }
     
+    func textDidChange(_ notification: Notification) {
+        loadingLabel.isHidden = true
+        configureButtonStates()
+    }
+        
     @objc private func edit(_ sender: NSTextField) {
         let text = sender.stringValue.trimmingCharacters(in: .whitespaces)
         // 'Updating' means to change the text of a specific row. There are potentially two rows to update, depending on whether we are filtering or not.
