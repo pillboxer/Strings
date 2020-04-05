@@ -65,6 +65,7 @@ class StringsListWindowController: NSWindowController {
         
         NSAlert.showSingleTextFieldAlert(window: window, title: "Filter", textFieldPlaceholder: "Key Or Value", returnButtonTitle: "Filter") { (filterValue) in
             if let filterValue = filterValue {
+                self.topTableView.scrollRowToVisible(0)
                 self.filterKeysAndValues(text: filterValue)
             }
             else {
@@ -120,7 +121,12 @@ class StringsListWindowController: NSWindowController {
     @IBOutlet weak var iosButton: NSButton!
     @IBOutlet weak var newValueTextFieldToLanguageConstraint: NSLayoutConstraint!
     @IBOutlet weak var newValueTextFieldToSuperviewConstraint: NSLayoutConstraint!
-
+    @IBOutlet  var newKeyTextFieldToBottomTableViewConstraint: NSLayoutConstraint!
+    @IBOutlet  var addButtonToBottomTableViewConstraint: NSLayoutConstraint!
+    @IBOutlet  var newValueTextFieldToBottomTableViewConstraint: NSLayoutConstraint!
+    @IBOutlet  var languagePopUpToBottomTableViewConstraint: NSLayoutConstraint!
+    @IBOutlet  var newValueTextFieldHeightConstraint: NSLayoutConstraint!
+    @IBOutlet  var bottomTableHeightConstraint: NSLayoutConstraint!
     @IBOutlet weak var languagePopUp: NSPopUpButton!
     @IBOutlet weak var environmentButton: NSButton!
     @IBOutlet weak var filterButton: NSButton!
@@ -156,6 +162,10 @@ class StringsListWindowController: NSWindowController {
         return .en
     }
     
+    private var constraintsToAnimate: [NSLayoutConstraint] {
+       return [languagePopUpToBottomTableViewConstraint, addButtonToBottomTableViewConstraint, newKeyTextFieldToBottomTableViewConstraint, newValueTextFieldToBottomTableViewConstraint]
+    }
+    
     // MARK: - Exposed Properties
     override var windowNibName: NSNib.Name? {
         return classNibName
@@ -173,6 +183,7 @@ class StringsListWindowController: NSWindowController {
     // MARK: - Life Cycle
     override func windowDidLoad() {
         super.windowDidLoad()
+        newValueTextField.placeholderDelegate = self
         bottomTableView.deleteDelegate = self
         originalKeysAndValues = manager.displayTuples
         currentKeysAndValues = originalKeysAndValues
@@ -455,7 +466,7 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
     }
 }
 
-extension StringsListWindowController: NSTextFieldDelegate, NSTextViewDelegate {
+extension StringsListWindowController: NSTextFieldDelegate, NSTextViewDelegate, PlaceholderTextViewDelegate {
     
     func controlTextDidChange(_ obj: Notification) {
         loadingLabel.isHidden = true
@@ -466,7 +477,28 @@ extension StringsListWindowController: NSTextFieldDelegate, NSTextViewDelegate {
         loadingLabel.isHidden = true
         configureButtonStates()
     }
+    
+    func controlTextDidEndEditing(_ obj: Notification) {
+        if let object = obj.object as? NSTextField, object == newKeyTextField, newKeyTextField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            newKeyTextField.stringValue = ""
+        }
+    }
+    
+    func placeholderTextViewFocusChanged(_ placeholderTextView: PlaceholderTextView, inFocus: Bool) {
+        NSAnimationContext.runAnimationGroup() { _ in
+            NSAnimationContext.current.duration = 0.4
+            NSAnimationContext.current.allowsImplicitAnimation = true
+            bottomTableHeightConstraint.constant -= inFocus ? 100 : -100
+            self.window?.layoutIfNeeded()
+        }
         
+        for constraint in constraintsToAnimate {
+            constraint.isActive = !inFocus
+        }
+        newValueTextFieldHeightConstraint.constant += inFocus ? 100.0 : -100.0
+        
+    }
+
     @objc private func edit(_ sender: NSTextField) {
         let text = sender.stringValue.trimmingCharacters(in: .whitespaces)
         // 'Updating' means to change the text of a specific row. There are potentially two rows to update, depending on whether we are filtering or not.
