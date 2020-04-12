@@ -17,6 +17,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let coordinator = Coordinator()
     
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        guard  #available(OSX 10.15, *) else {
+            NSAlert.showSimpleAlert(window: window, isError: true, title: "Error", message: "You need to be running MacOS 10.15 or later. Please update your system", completion: nil)
+            NSApp.terminate(nil)
+            return
+        }
         coordinator.delegate = self
         window.orderOut(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -26,6 +31,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         NSApp.activate(ignoringOtherApps: true)
+        coordinator.start()
         return true
     }
         

@@ -33,9 +33,8 @@ class Coordinator {
     
     func logout() {
         BitbucketManager.shared.logout()
-        currentController.close()
-        delegate?.coordinatorDidLogout(self)
-        loadFromBitbucket()
+        controllerType = .login
+        loadController()
     }
     
     // MARK: - Private Methods
