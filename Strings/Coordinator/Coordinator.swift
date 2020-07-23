@@ -41,11 +41,9 @@ class Coordinator {
     private func loadFromBitbucket() {
         BitbucketManager.shared.load { (error) in
             if let error = error {
-                switch error {
-                case .noCredentials, .badCredentials:
-                    self.controllerType = .login
-                default:
-                    self.showErrorAndQuit(error)
+                self.controllerType = .login
+                if !error.isNoCredentialsError {
+                    self.showErrorAndReturnToLogin(error)
                     return
                 }
             }
@@ -64,7 +62,14 @@ class Coordinator {
                 NSApp.terminate(nil)
             }
         }
-        
+    }
+    
+    private func showErrorAndReturnToLogin(_ error: RequestError) {
+        DispatchQueue.main.async {
+            NSAlert.showSimpleAlert(window: self.currentController.window, isError: true, title: "Something Went Wrong", message: error.localizedDescription) {
+                self.loadController()
+            }
+        }
     }
     
     private func loadController() {

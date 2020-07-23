@@ -31,14 +31,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         NSApp.activate(ignoringOtherApps: true)
-        coordinator.start()
+        if !flag {
+            coordinator.start()
+        }
         return true
     }
         
     @IBAction func logout(_ sender: Any) {
         coordinator.logout()
     }
-    
 }
 
 extension AppDelegate: CoordinatorDelegate {

@@ -449,6 +449,9 @@ extension StringsListWindowController: NSTableViewDelegate, UIHelperTableViewDel
                 let currentBackgroundColor = rowView?.backgroundColor ?? .clear
                 rowView?.backgroundColor = keyAndValue.isSeparator ? .black : currentBackgroundColor
             }
+            else {
+                cell.textField?.isEditable = false
+            }
             
             cell.textField?.stringValue = text
             cell.textField?.target = self
