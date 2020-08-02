@@ -232,7 +232,7 @@ extension StringsListWindowController {
     
     private func correctKeysAndValuesForTableVew(_ tableView: NSTableView) -> [KeyAndValue]? {
         if tableView == self.topTableView {
-            return correctKeysAndValuesForTopTableView?.sorted() { $0.key < $1.key }
+            return correctKeysAndValuesForTopTableView
         }
         else {
             return newKeysAndValuesToAdd.sorted() { $0.key < $1.key }
