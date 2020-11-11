@@ -21,6 +21,12 @@ class StringsListWindowController: NSWindowController {
     }
     
     @IBAction func ctaButtonPressed(_ sender: Any) {
+        guard !commitMessageTextField.stringValue.isEmpty else {
+            commitMessageTextField.layer?.borderColor = NSColor.red.cgColor
+            commitMessageTextField.layer?.borderWidth = 1.0
+            return
+        }
+        commitMessageTextField.layer?.borderWidth = 0.0
         enableInterface(false)
         // Manually disable so we can't spam
         ctaButton.isEnabled = false
